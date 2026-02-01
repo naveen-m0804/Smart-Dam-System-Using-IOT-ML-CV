@@ -1,5 +1,5 @@
 // Dynamic API URL from localStorage
-const DEFAULT_API_URL = 'https://smart-dam-project-backend.onrender.com';
+const DEFAULT_API_URL = 'https://smart-dam-system-using-iot-ml-cv.onrender.com';
 
 function getApiBaseUrl(): string {
   if (typeof window === 'undefined') return DEFAULT_API_URL;
