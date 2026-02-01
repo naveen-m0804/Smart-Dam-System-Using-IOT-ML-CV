@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 const API_URL_KEY = 'dam_api_url';
-const DEFAULT_API_URL = 'https://smart-dam-project-backend.onrender.com';
+const DEFAULT_API_URL = 'https://smart-dam-system-using-iot-ml-cv.onrender.com';
 
 export function getApiBaseUrl(): string {
   if (typeof window === 'undefined') return DEFAULT_API_URL;
@@ -95,7 +95,7 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
                 setUrl(e.target.value);
                 setTestStatus('idle');
               }}
-              placeholder="https://smart-dam-project-backend.onrender.com"
+              placeholder="https://smart-dam-system-using-iot-ml-cv.onrender.com"
               className="font-mono text-sm"
             />
             <p className="text-xs text-muted-foreground">
@@ -134,7 +134,7 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
             <Label className="text-xs text-muted-foreground">Quick presets:</Label>
             <div className="flex flex-wrap gap-2">
               {[
-                'https://smart-dam-project-backend.onrender.com',
+                'https://smart-dam-system-using-iot-ml-cv.onrender.com',
                 'http://localhost:5000',
                 'http://127.0.0.1:5000',
               ].map((preset) => (
