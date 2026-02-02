@@ -1,10 +1,5 @@
-// Dynamic API URL from localStorage
-const DEFAULT_API_URL = 'https://smart-dam-system-using-iot-ml-cv.onrender.com';
-
-function getApiBaseUrl(): string {
-  if (typeof window === 'undefined') return DEFAULT_API_URL;
-  return localStorage.getItem('dam_api_url') || DEFAULT_API_URL;
-}
+// Backend API URL (hardcoded)
+const API_BASE_URL = 'https://smart-dam-project-backend.onrender.com';
 
 export interface SensorReading {
   _id: string;
@@ -80,8 +75,7 @@ export interface AlertLog {
 }
 
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const baseUrl = getApiBaseUrl();
-  const response = await fetch(`${baseUrl}${endpoint}`, {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
