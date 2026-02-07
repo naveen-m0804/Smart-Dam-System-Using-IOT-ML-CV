@@ -3,7 +3,9 @@ const DEFAULT_API_URL = 'https://smart-dam-system-using-iot-ml-cv.onrender.com';
 
 function getApiBaseUrl(): string {
   if (typeof window === 'undefined') return DEFAULT_API_URL;
-  return localStorage.getItem('dam_api_url') || DEFAULT_API_URL;
+  const url = localStorage.getItem('dam_api_url_v2') || DEFAULT_API_URL;
+  console.log('Using API URL:', url);
+  return url;
 }
 
 export interface SensorReading {
