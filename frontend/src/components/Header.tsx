@@ -3,15 +3,10 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { LoginModal } from './LoginModal';
-import { ApiSettingsModal } from './ApiSettingsModal';
 
 export function Header() {
   const { isLoggedIn, logout } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
-
-  const handleApiUrlChange = () => {
-    window.location.reload();
-  };
 
   return (
     <>
@@ -33,8 +28,6 @@ export function Header() {
 
           {/* User Section */}
           <div className="flex items-center gap-4">
-            {/* API Settings */}
-            <ApiSettingsModal onUrlChange={handleApiUrlChange} />
             
             {isLoggedIn ? (
               <div className="flex items-center gap-3">

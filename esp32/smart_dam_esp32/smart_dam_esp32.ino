@@ -7,7 +7,7 @@
 
 #define WIFI_SSID   "naveen"
 #define WIFI_PASS   "naveensai"
-#define BACKEND_URL "https://smart-dam-project-backend.onrender.com"
+#define BACKEND_URL "https://smart-dam-system-using-iot-ml-cv.onrender.com"
 #define DAM_HEIGHT_CM 40
 
 #define DHTPIN 4
