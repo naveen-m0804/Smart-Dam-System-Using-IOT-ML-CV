@@ -10,6 +10,14 @@
 #define BACKEND_URL "https://smart-dam-system-using-iot-ml-cv.onrender.com"
 #define DAM_HEIGHT_CM 40
 
+// Intervals (ms)
+#define POST_INTERVAL_MS 2000
+#define SENSOR_INTERVAL_MS 2000
+#define CONTROL_INTERVAL_MS 2500
+#define HUMAN_INTERVAL_MS 4000
+#define RAIN_INTERVAL_MS 20000
+#define HTTP_TIMEOUT_MS 3000
+
 #define DHTPIN 4
 #define DHTTYPE DHT11
 #define TRIG_PIN 5
@@ -20,6 +28,7 @@
 
 DHT dht(DHTPIN, DHTTYPE);
 Servo valveServo;
+const String BASE_URL = String(BACKEND_URL);
 
 // ---------------- STATE ----------------
 bool valveState = false;
@@ -34,6 +43,13 @@ unsigned long lastPost = 0;
 unsigned long lastRainFetch = 0;
 unsigned long lastControlFetch = 0;
 unsigned long lastHumanCheckFetch = 0;
+unsigned long lastSensorRead = 0;
+
+float currentTemp = NAN;
+float currentHum = NAN;
+float currentDist = NAN;
+float currentPct = NAN;
+bool currentVibration = false;
 
 // ---------------- BUZZER ----------------
 void setupBuzzer() { pinMode(BUZZER_PIN, OUTPUT); }
@@ -53,16 +69,30 @@ String nowIso() {
   return String(buf);
 }
 
+bool ensureWiFi() {
+  if (WiFi.status() == WL_CONNECTED) return true;
+  WiFi.disconnect();
+  WiFi.reconnect();
+  return false;
+}
+
+bool beginRequest(HTTPClient &http, const String &path) {
+  if (!ensureWiFi()) return false;
+  http.setTimeout(HTTP_TIMEOUT_MS);
+  http.setReuse(true);
+  return http.begin(BASE_URL + path);
+}
+
 // ---------------- LOG ALERT ----------------
 void logAlert(String type, JsonDocument &doc) {
-  if (WiFi.status() != WL_CONNECTED) return;
   String json;
   serializeJson(doc, json);
   HTTPClient http;
-  http.begin(String(BACKEND_URL) + "/api/alerts/" + type);
-  http.addHeader("Content-Type", "application/json");
-  http.POST(json);
-  http.end();
+  if (beginRequest(http, "/api/alerts/" + type)) {
+    http.addHeader("Content-Type", "application/json");
+    http.POST(json);
+    http.end();
+  }
 }
 
 // ---------------- SENSORS ----------------
@@ -100,61 +130,64 @@ float calcWaterPercent(float dist) {
 
 // ---------------- BACKEND FETCH ----------------
 void fetchRainPrediction() {
-  if (millis() - lastRainFetch < 15000) return;
+  if (millis() - lastRainFetch < RAIN_INTERVAL_MS) return;
   lastRainFetch = millis();
 
   HTTPClient http;
-  http.begin(String(BACKEND_URL) + "/api/rainfall");
-  if (http.GET() == 200) {
-    DynamicJsonDocument doc(256);
-    deserializeJson(doc, http.getString());
-    lastRainPercent = doc["percent"];
+  if (beginRequest(http, "/api/rainfall")) {
+    if (http.GET() == 200) {
+      DynamicJsonDocument doc(256);
+      deserializeJson(doc, http.getString());
+      lastRainPercent = doc["percent"];
+    }
+    http.end();
   }
-  http.end();
 }
 
 void fetchHumanDetection() {
-  if (millis() - lastHumanCheckFetch < 3000) return;
+  if (millis() - lastHumanCheckFetch < HUMAN_INTERVAL_MS) return;
   lastHumanCheckFetch = millis();
 
   HTTPClient http;
-  http.begin(String(BACKEND_URL) + "/api/human-detection/status");
-  if (http.GET() == 200) {
-    DynamicJsonDocument doc(256);
-    deserializeJson(doc, http.getString());
+  if (beginRequest(http, "/api/human-detection/status")) {
+    if (http.GET() == 200) {
+      DynamicJsonDocument doc(256);
+      deserializeJson(doc, http.getString());
 
-    bool prev = humanDetected;
-    humanDetected = doc["humanDetected"];
-    humanConfidence = doc["confidence"];
+      bool prev = humanDetected;
+      humanDetected = doc["humanDetected"];
+      humanConfidence = doc["confidence"];
 
-    if (humanDetected && !prev) {
-      Serial.println("*** HUMAN DETECTED ***");
-      beep(150); delay(50); beep(150);
+      if (humanDetected && !prev) {
+        Serial.println("*** HUMAN DETECTED ***");
+        beep(150); delay(50); beep(150);
 
-      DynamicJsonDocument alert(256);
-      alert["detected"] = true;
-      alert["confidence"] = humanConfidence;
-      alert["timestamp"] = nowIso();
-      alert["nodeId"] = "main";
-      logAlert("human", alert);
+        DynamicJsonDocument alert(256);
+        alert["detected"] = true;
+        alert["confidence"] = humanConfidence;
+        alert["timestamp"] = nowIso();
+        alert["nodeId"] = "main";
+        logAlert("human", alert);
+      }
     }
+    http.end();
   }
-  http.end();
 }
 
 void fetchControl() {
-  if (millis() - lastControlFetch < 2000) return;
+  if (millis() - lastControlFetch < CONTROL_INTERVAL_MS) return;
   lastControlFetch = millis();
 
   HTTPClient http;
-  http.begin(String(BACKEND_URL) + "/api/valve/control");
-  if (http.GET() == 200) {
-    DynamicJsonDocument doc(256);
-    deserializeJson(doc, http.getString());
-    controlMode = doc["mode"].as<String>();
-    manualCommand = doc["manualCommand"].as<String>();
+  if (beginRequest(http, "/api/valve/control")) {
+    if (http.GET() == 200) {
+      DynamicJsonDocument doc(256);
+      deserializeJson(doc, http.getString());
+      controlMode = doc["mode"].as<String>();
+      manualCommand = doc["manualCommand"].as<String>();
+    }
+    http.end();
   }
-  http.end();
 }
 
 // ---------------- SERVO ----------------
@@ -181,12 +214,13 @@ void setValve(bool open, String reason) {
   doc["timestamp"] = nowIso();
 
   HTTPClient http;
-  http.begin(String(BACKEND_URL) + "/api/valve/status");
-  http.addHeader("Content-Type", "application/json");
-  String json;
-  serializeJson(doc, json);
-  http.PUT(json);
-  http.end();
+  if (beginRequest(http, "/api/valve/status")) {
+    http.addHeader("Content-Type", "application/json");
+    String json;
+    serializeJson(doc, json);
+    http.PUT(json);
+    http.end();
+  }
 }
 
 // ---------------- AUTO LOGIC ----------------
@@ -203,7 +237,8 @@ void autoControl(float pct) {
 
 // ---------------- POST ----------------
 void postReading(float temp, float hum, float dist, float pct, bool vibration) {
-  if (WiFi.status() != WL_CONNECTED) return;
+  if (!ensureWiFi()) return;
+  if (isnan(temp) || isnan(hum)) return;
 
   DynamicJsonDocument doc(512);
   doc["temp"] = temp;
@@ -220,10 +255,11 @@ void postReading(float temp, float hum, float dist, float pct, bool vibration) {
   String json;
   serializeJson(doc, json);
   HTTPClient http;
-  http.begin(String(BACKEND_URL) + "/api/readings");
-  http.addHeader("Content-Type", "application/json");
-  http.POST(json);
-  http.end();
+  if (beginRequest(http, "/api/readings")) {
+    http.addHeader("Content-Type", "application/json");
+    http.POST(json);
+    http.end();
+  }
 }
 
 // ---------------- SETUP ----------------
@@ -246,6 +282,8 @@ void setup() {
   valveServo.write(0);
   valveState = false;
 
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   while (WiFi.status() != WL_CONNECTED) delay(500);
 
@@ -255,34 +293,41 @@ void setup() {
 
 // ---------------- LOOP ----------------
 void loop() {
-  float temp = dht.readTemperature();
-  float hum = dht.readHumidity();
-  float dist = measureDistance();
-  float pct = calcWaterPercent(dist);
-  bool vibration = checkVibration();
+  unsigned long now = millis();
+  currentVibration = checkVibration();
+
+  if (now - lastSensorRead >= SENSOR_INTERVAL_MS) {
+    currentTemp = dht.readTemperature();
+    currentHum = dht.readHumidity();
+    currentDist = measureDistance();
+    currentPct = calcWaterPercent(currentDist);
+    lastSensorRead = now;
+  }
 
   fetchRainPrediction();
   fetchHumanDetection();
   fetchControl();
 
   Serial.printf("[DATA] T:%.1f H:%.1f D:%.1f W:%.1f R:%.1f V:%s H:%s(%.2f) VALVE:%s MODE:%s\n",
-              temp, hum, dist, pct, lastRainPercent,
-              vibration ? "Y" : "N",
+              currentTemp, currentHum, currentDist, currentPct, lastRainPercent,
+              currentVibration ? "Y" : "N",
               humanDetected ? "Y" : "N",
               humanConfidence,
               valveState ? "OPEN" : "CLOSED",
               controlMode.c_str());
 
-  if (controlMode == "AUTO") autoControl(pct);
-  else {
-    if (manualCommand == "OPEN") setValve(true, "MANUAL");
-    if (manualCommand == "CLOSE") setValve(false, "MANUAL");
+  if (!isnan(currentPct)) {
+    if (controlMode == "AUTO") autoControl(currentPct);
+    else {
+      if (manualCommand == "OPEN") setValve(true, "MANUAL");
+      if (manualCommand == "CLOSE") setValve(false, "MANUAL");
+    }
   }
 
-  if (millis() - lastPost > 2000) {
-    postReading(temp, hum, dist, pct, vibration);
-    lastPost = millis();
+  if (now - lastPost > POST_INTERVAL_MS) {
+    postReading(currentTemp, currentHum, currentDist, currentPct, currentVibration);
+    lastPost = now;
   }
 
-  delay(500);
+  delay(10);
 }

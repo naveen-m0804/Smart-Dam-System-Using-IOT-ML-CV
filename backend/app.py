@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta
 import requests
+import time
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pymongo import MongoClient
@@ -15,7 +16,14 @@ else:
             self.running = False
 
 app = Flask(__name__)
-CORS(app)
+
+def _cors_origins():
+    raw = getattr(Config, "CORS_ORIGINS", "*")
+    if not raw or raw.strip() == "*":
+        return "*"
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+CORS(app, resources={r"/*": {"origins": _cors_origins()}}, supports_credentials=False)
 
 client = MongoClient(Config.MONGO_URI)
 db = client[Config.DB_NAME]
@@ -37,6 +45,7 @@ else:
     print("⚠️ Human detection disabled")
 
 rainfall_predictor = None
+WEATHER_CACHE = {"data": None, "ts": 0.0}
 
 def get_rainfall_predictor():
     global rainfall_predictor
@@ -67,6 +76,10 @@ def nice_ts(raw):
         return str(raw)
 
 def fetch_weather():
+    now = time.time()
+    if WEATHER_CACHE["data"] and (now - WEATHER_CACHE["ts"] < Config.WEATHER_CACHE_TTL):
+        return WEATHER_CACHE["data"]
+
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": DAM_LOCATION["latitude"],
@@ -80,7 +93,7 @@ def fetch_weather():
         r.raise_for_status()
         data = r.json()
         hourly = data.get("hourly", {})
-        return {
+        result = {
             "temperature": data["current_weather"].get("temperature"),
             "humidity": hourly.get("relativehumidity_2m", [None])[0],
             "cloud": hourly.get("cloudcover", [None])[0],
@@ -90,7 +103,12 @@ def fetch_weather():
             "windspeed": data["current_weather"].get("windspeed"),
             "time": data["current_weather"].get("time"),
         }
+        WEATHER_CACHE["data"] = result
+        WEATHER_CACHE["ts"] = now
+        return result
     except:
+        if WEATHER_CACHE["data"]:
+            return WEATHER_CACHE["data"]
         return {"temperature": None, "humidity": None, "cloud": None, "rain_prob": None, "sunshine": None, "wind_direction": None, "windspeed": None, "time": None}
 
 @app.route("/")
@@ -237,6 +255,8 @@ def api_valve_control():
 
 @app.route("/api/human-detection/status")
 def api_human_detection_status():
+    if not Config.ENABLE_HUMAN_DETECTION:
+        return jsonify({"humanDetected": False, "lastChecked": "", "confidence": 0.0, "detectorRunning": False, "disabled": True})
     doc = db['human_detection'].find_one({"_id": "current"})
     if not doc:
         return jsonify({"humanDetected": False, "lastChecked": "", "confidence": 0.0, "detectorRunning": human_detector.running})

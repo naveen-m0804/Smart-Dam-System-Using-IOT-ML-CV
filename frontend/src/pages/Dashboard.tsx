@@ -171,6 +171,7 @@ const Dashboard = () => {
             lastAlertTimestamp={humanLastAlert}
             timestamp={humanDetection?.lastChecked || latestReading?.timestamp || ''}
             valveState={valveStatus?.state || 'CLOSED'}
+            disabled={humanDetection?.disabled || false}
           />
 
           {/* Valve Control - Full Width - Only for Admin */}

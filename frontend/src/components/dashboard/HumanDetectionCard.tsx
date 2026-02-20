@@ -6,6 +6,7 @@ interface HumanDetectionCardProps {
   lastAlertTimestamp: string;
   timestamp: string;
   valveState?: 'OPEN' | 'CLOSED';
+  disabled?: boolean;
 }
 
 // Helper to format alert timestamp into date and time parts
@@ -28,10 +29,12 @@ export function HumanDetectionCard({
   confidence, 
   lastAlertTimestamp, 
   timestamp,
-  valveState = 'CLOSED'
+  valveState = 'CLOSED',
+  disabled = false
 }: HumanDetectionCardProps) {
+  const isDisabled = disabled === true;
   // Danger state: human detected (especially critical if valve is open)
-  const isDanger = humanDetected === true;
+  const isDanger = !isDisabled && humanDetected === true;
   const isCritical = humanDetected === true && valveState === 'OPEN';
 
   // Format confidence - handle both 0-1 and 0-100 ranges
@@ -66,7 +69,7 @@ export function HumanDetectionCard({
           <h3 className="font-display text-lg font-semibold">Human Detection</h3>
         </div>
         <span className={`status-badge ${isDanger ? 'bg-destructive/30 text-destructive font-bold' : 'bg-success/20 text-success'}`}>
-          {isCritical ? 'CRITICAL' : isDanger ? 'DANGER' : 'CLEAR'}
+          {isDisabled ? 'DISABLED' : isCritical ? 'CRITICAL' : isDanger ? 'DANGER' : 'CLEAR'}
         </span>
       </div>
 
@@ -102,7 +105,7 @@ export function HumanDetectionCard({
         <div className={`text-center p-3 rounded-lg ${isDanger ? 'bg-destructive/20' : 'bg-secondary/50'}`}>
           <p className="text-xs text-muted-foreground">Status</p>
           <p className={`font-display font-bold text-sm ${isDanger ? 'text-destructive' : 'text-success'}`}>
-            {isDanger ? 'DANGER' : 'SAFE'}
+            {isDisabled ? 'OFF' : isDanger ? 'DANGER' : 'SAFE'}
           </p>
         </div>
         <div className={`text-center p-3 rounded-lg ${isDanger ? 'bg-destructive/20' : 'bg-secondary/50'}`}>

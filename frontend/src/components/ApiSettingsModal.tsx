@@ -45,9 +45,8 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
     setErrorMessage('');
     
     try {
-      const response = await fetch(`${url}/`, {
+      const response = await fetch(`${url}/api/ping`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
       });
       
       if (response.ok) {

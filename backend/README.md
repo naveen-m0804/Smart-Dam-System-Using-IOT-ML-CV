@@ -196,6 +196,8 @@ MODEL_PATH=models/rainfall_model.pkl
 YOLO_MODEL=yolov8n.pt
 DETECTION_CONFIDENCE=0.5
 ENABLE_HUMAN_DETECTION=true
+CORS_ORIGINS=*
+WEATHER_CACHE_TTL=300
 PORT=5000
 ```
 
@@ -207,6 +209,11 @@ python app.py
 If you do not have a webcam or want faster local startup:
 ```env
 ENABLE_HUMAN_DETECTION=false
+```
+
+For CORS issues (e.g. Vercel frontend), set:
+```env
+CORS_ORIGINS=https://damflow.vercel.app,http://localhost:5173
 ```
 
 ### 3) Frontend (Vite)
@@ -364,6 +371,8 @@ To reduce cold-start time on Render, disable webcam/YOLO processing:
 ```env
 ENABLE_HUMAN_DETECTION=false
 ```
+
+If `ENABLE_HUMAN_DETECTION` is not set, it defaults to **false on Render** and **true locally**.
 
 ---
 

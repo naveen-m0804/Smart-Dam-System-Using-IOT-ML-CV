@@ -17,7 +17,15 @@ class Config:
     # Human detection settings
     DETECTION_CONFIDENCE = float(os.getenv('DETECTION_CONFIDENCE', 0.5))
     DETECTION_INTERVAL = int(os.getenv('DETECTION_INTERVAL', 3))  # seconds
-    ENABLE_HUMAN_DETECTION = os.getenv('ENABLE_HUMAN_DETECTION', 'true').strip().lower() in ('1', 'true', 'yes', 'on')
+    _render_env = os.getenv('RENDER') or os.getenv('RENDER_SERVICE_ID')
+    _enable_detection_raw = os.getenv('ENABLE_HUMAN_DETECTION')
+    if _enable_detection_raw is None:
+        ENABLE_HUMAN_DETECTION = False if _render_env else True
+    else:
+        ENABLE_HUMAN_DETECTION = _enable_detection_raw.strip().lower() in ('1', 'true', 'yes', 'on')
+
+    # CORS (comma-separated origins or "*")
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*')
     
     # Security
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
@@ -28,3 +36,6 @@ class Config:
     # Location
     DAM_LATITUDE = float(os.getenv('DAM_LATITUDE', 12.96312116701951))
     DAM_LONGITUDE = float(os.getenv('DAM_LONGITUDE', 79.94246446052891))
+
+    # Weather cache (seconds)
+    WEATHER_CACHE_TTL = int(os.getenv('WEATHER_CACHE_TTL', 300))

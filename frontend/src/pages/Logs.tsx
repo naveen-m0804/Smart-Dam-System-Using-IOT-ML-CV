@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { Navigation } from '@/components/Navigation';
 import { LogTable } from '@/components/LogTable';
@@ -9,6 +9,31 @@ import api, { type AlertLog, type SensorReading } from '@/lib/api';
 import { RefreshCw, Droplets, Activity, UserX, Thermometer } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+function mergeById<T extends { _id?: string }>(prev: T[], next: T[]): T[] {
+  if (next.length === 0) return prev;
+  const seen = new Set<string>();
+  const merged: T[] = [];
+  for (const item of next) {
+    const id = item._id;
+    if (id) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        merged.push(item);
+      }
+    } else {
+      merged.push(item);
+    }
+  }
+  for (const item of prev) {
+    const id = item._id;
+    if (!id || !seen.has(id)) {
+      if (id) seen.add(id);
+      merged.push(item);
+    }
+  }
+  return merged;
+}
+
 const Logs = () => {
   const { isAdmin } = useAuth();
   const [waterLogs, setWaterLogs] = useState<AlertLog[]>([]);
@@ -17,10 +42,11 @@ const Logs = () => {
   const [readings, setReadings] = useState<SensorReading[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>('');
+  const hasLoadedRef = useRef(false);
 
   const fetchData = useCallback(async () => {
     try {
-      setIsLoading(true);
+      if (!hasLoadedRef.current) setIsLoading(true);
       const [waterData, vibrationData, humanData, readingsData] = await Promise.allSettled([
         api.getAlertLogs('waterlevel'),
         api.getAlertLogs('vibration'),
@@ -28,16 +54,19 @@ const Logs = () => {
         api.getReadings(),
       ]);
 
-      if (waterData.status === 'fulfilled') setWaterLogs(waterData.value);
-      if (vibrationData.status === 'fulfilled') setVibrationLogs(vibrationData.value);
-      if (humanData.status === 'fulfilled') setHumanLogs(humanData.value);
-      if (readingsData.status === 'fulfilled') setReadings(readingsData.value);
+      if (waterData.status === 'fulfilled') setWaterLogs(prev => mergeById(prev, waterData.value));
+      if (vibrationData.status === 'fulfilled') setVibrationLogs(prev => mergeById(prev, vibrationData.value));
+      if (humanData.status === 'fulfilled') setHumanLogs(prev => mergeById(prev, humanData.value));
+      if (readingsData.status === 'fulfilled') setReadings(prev => mergeById(prev, readingsData.value));
 
       setLastUpdate(new Date().toLocaleTimeString());
     } catch (err) {
       console.error('Fetch error:', err);
     } finally {
-      setIsLoading(false);
+      if (!hasLoadedRef.current) {
+        setIsLoading(false);
+        hasLoadedRef.current = true;
+      }
     }
   }, []);
 

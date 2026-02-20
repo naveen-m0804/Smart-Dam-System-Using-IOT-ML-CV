@@ -5,7 +5,6 @@ const DEFAULT_API_URL = ENV_API_URL || 'https://smart-dam-system-using-iot-ml-cv
 function getApiBaseUrl(): string {
   if (typeof window === 'undefined') return DEFAULT_API_URL;
   const url = localStorage.getItem('dam_api_url_v2') || DEFAULT_API_URL;
-  console.log('Using API URL:', url);
   return url;
 }
 
@@ -52,6 +51,7 @@ export interface HumanDetectionStatus {
   lastChecked: string;
   confidence: number;
   detectorRunning: boolean;
+  disabled?: boolean;
 }
 
 export interface DashboardStats {
@@ -82,14 +82,20 @@ export interface AlertLog {
   timestamp: string;
 }
 
-async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const baseUrl = getApiBaseUrl();
+  const headers: HeadersInit = {
+    ...(options.headers || {}),
+  };
+  const hasBody = options.body !== undefined && options.body !== null;
+  if (hasBody && !('Content-Type' in headers)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
+    cache: 'no-store',
   });
 
   if (!response.ok) {
