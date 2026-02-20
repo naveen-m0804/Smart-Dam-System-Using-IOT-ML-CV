@@ -426,7 +426,7 @@ Smart-Dam-System-Using-IOT-ML-CV/
 - Node.js v18+
 - Python 3.9+
 - Arduino IDE with ESP32 board support installed
-- PostgreSQL (or SQLite for local dev)
+- MongoDB
 - Git
 
 ---
