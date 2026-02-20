@@ -5,8 +5,15 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pymongo import MongoClient
 from config import Config
-from utils.human_detection import HumanDetector
 from utils.rainfall_predictor import RainfallPredictor
+
+if Config.ENABLE_HUMAN_DETECTION:
+    from utils.human_detection import HumanDetector
+else:
+    class HumanDetector:
+        def __init__(self):
+            self.model = None
+            self.running = False
 
 app = Flask(__name__)
 CORS(app)
@@ -81,6 +88,8 @@ def fetch_weather():
         return {"temperature": None, "humidity": None, "cloud": None, "rain_prob": None, "sunshine": None, "wind_direction": None, "windspeed": None, "time": None}
 
 @app.route("/")
+@app.route("/api/health")
+@app.route("/api/ping")
 def health():
     return jsonify({"status": "ok", "service": "Smart Dam System", "version": "2.0"})
 

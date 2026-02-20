@@ -92,6 +92,7 @@ DB_NAME=smart_dam_db
 MODEL_PATH=models/rainfall_model.pkl
 YOLO_MODEL=yolov8n.pt
 DETECTION_CONFIDENCE=0.5
+ENABLE_HUMAN_DETECTION=true
 SECRET_KEY=your-random-secret-key-here
 DAM_LATITUDE=12.96312116701951
 DAM_LONGITUDE=79.94246446052891
@@ -158,6 +159,8 @@ Test endpoints:
 ```bash
 # Health check
 curl http://localhost:5000/
+curl http://localhost:5000/api/health
+curl http://localhost:5000/api/ping
 
 # Weather
 curl http://localhost:5000/api/weather
@@ -264,6 +267,8 @@ Admins can:
 #### Public (User & Admin)
 
 ```bash
+GET  /api/ping                 # Lightweight keep-alive
+GET  /api/health               # Health check
 GET  /api/weather              # Current weather
 GET  /api/rainfall             # Rainfall prediction
 GET  /api/readings             # Sensor readings
@@ -283,6 +288,22 @@ POST /api/valve/control        # Control valve
        "command": "OPEN",
        "userRole": "admin"
      }
+```
+
+---
+
+## Keep-Alive (Render Free Tier)
+
+Render free web services sleep after ~15 minutes of inactivity. Use a cron job or uptime monitor to hit a lightweight endpoint every 10-14 minutes:
+
+```bash
+curl https://your-render-app.onrender.com/api/ping
+```
+
+To reduce cold-start time on Render, disable webcam/YOLO processing:
+
+```env
+ENABLE_HUMAN_DETECTION=false
 ```
 
 ---

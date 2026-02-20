@@ -17,6 +17,7 @@ class Config:
     # Human detection settings
     DETECTION_CONFIDENCE = float(os.getenv('DETECTION_CONFIDENCE', 0.5))
     DETECTION_INTERVAL = int(os.getenv('DETECTION_INTERVAL', 3))  # seconds
+    ENABLE_HUMAN_DETECTION = os.getenv('ENABLE_HUMAN_DETECTION', 'true').strip().lower() in ('1', 'true', 'yes', 'on')
     
     # Security
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')

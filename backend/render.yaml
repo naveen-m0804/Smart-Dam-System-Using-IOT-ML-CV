@@ -11,3 +11,5 @@ services:
         sync: false
       - key: SECRET_KEY
         sync: false
+      - key: ENABLE_HUMAN_DETECTION
+        value: "false"
