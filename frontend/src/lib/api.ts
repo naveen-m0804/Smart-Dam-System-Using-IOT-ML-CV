@@ -1,5 +1,6 @@
-// Dynamic API URL from localStorage
-const DEFAULT_API_URL = 'https://smart-dam-system-using-iot-ml-cv.onrender.com';
+// Dynamic API URL from localStorage (override) or Vite env
+const ENV_API_URL = import.meta.env.VITE_API_URL as string | undefined;
+const DEFAULT_API_URL = ENV_API_URL || 'https://smart-dam-system-using-iot-ml-cv.onrender.com';
 
 function getApiBaseUrl(): string {
   if (typeof window === 'undefined') return DEFAULT_API_URL;

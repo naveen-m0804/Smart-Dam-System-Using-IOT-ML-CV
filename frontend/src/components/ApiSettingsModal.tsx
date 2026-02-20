@@ -12,7 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 const API_URL_KEY = 'dam_api_url_v2';
-const DEFAULT_API_URL = 'https://smart-dam-system-using-iot-ml-cv.onrender.com';
+const ENV_API_URL = import.meta.env.VITE_API_URL as string | undefined;
+const DEFAULT_API_URL = ENV_API_URL || 'https://smart-dam-system-using-iot-ml-cv.onrender.com';
 
 export function getApiBaseUrl(): string {
   if (typeof window === 'undefined') return DEFAULT_API_URL;

@@ -169,6 +169,65 @@ curl http://localhost:5000/api/weather
 curl http://localhost:5000/api/rainfall
 ```
 
+---
+
+## Local Setup (Backend + Frontend)
+
+Use this when testing on localhost.
+
+### 1) MongoDB
+- Local: start MongoDB and use `MONGO_URI=mongodb://localhost:27017/`
+- Atlas: use your Atlas connection string
+
+### 2) Backend (Flask)
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+Update `backend/.env`:
+```env
+MONGO_URI=mongodb://localhost:27017/
+DB_NAME=smart_dam_db
+MODEL_PATH=models/rainfall_model.pkl
+YOLO_MODEL=yolov8n.pt
+DETECTION_CONFIDENCE=0.5
+ENABLE_HUMAN_DETECTION=true
+PORT=5000
+```
+
+Start backend:
+```bash
+python app.py
+```
+
+If you do not have a webcam or want faster local startup:
+```env
+ENABLE_HUMAN_DETECTION=false
+```
+
+### 3) Frontend (Vite)
+```bash
+cd frontend
+npm install
+```
+
+Create `frontend/.env.local` (or copy `frontend/.env.example`) and set:
+```env
+VITE_API_URL=http://localhost:5000
+```
+
+Start frontend:
+```bash
+npm run dev
+```
+
+Open the app at the Vite URL (usually `http://localhost:5173`).
+You can also change the backend URL from the UI (Settings icon).
+
 ### Step 7: ESP32 Setup
 
 #### 7.1 Install Arduino IDE Libraries

@@ -5,7 +5,6 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pymongo import MongoClient
 from config import Config
-from utils.rainfall_predictor import RainfallPredictor
 
 if Config.ENABLE_HUMAN_DETECTION:
     from utils.human_detection import HumanDetector
@@ -37,7 +36,14 @@ if human_detector.model:
 else:
     print("⚠️ Human detection disabled")
 
-rainfall_predictor = RainfallPredictor(Config.MODEL_PATH)
+rainfall_predictor = None
+
+def get_rainfall_predictor():
+    global rainfall_predictor
+    if rainfall_predictor is None:
+        from utils.rainfall_predictor import RainfallPredictor
+        rainfall_predictor = RainfallPredictor(Config.MODEL_PATH)
+    return rainfall_predictor
 
 DAM_LOCATION = {
     "latitude": Config.DAM_LATITUDE,
@@ -140,7 +146,8 @@ def api_rainfall():
             'Pressure': float(pressure)
         }
         
-        percent, rain_label = rainfall_predictor.predict(model_input)
+        predictor = get_rainfall_predictor()
+        percent, rain_label = predictor.predict(model_input)
         
         prediction_doc = {
             "percent": float(percent),
