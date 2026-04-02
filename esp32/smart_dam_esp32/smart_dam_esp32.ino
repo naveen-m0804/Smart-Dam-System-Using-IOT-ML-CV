@@ -5,8 +5,9 @@
 #include <ArduinoJson.h>
 #include <time.h>
 
-#define WIFI_SSID   "naveen"
-#define WIFI_PASS   "naveensai"
+// ⚠️ Replace with your actual WiFi credentials before uploading to ESP32
+#define WIFI_SSID   "your_wifi_ssid"
+#define WIFI_PASS   "your_wifi_password"
 
 // ========== BACKEND URL CONFIGURATION ==========
 // Set USE_LOCAL_SERVER to true when running backend on your local machine

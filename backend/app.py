@@ -280,7 +280,55 @@ def api_alert(alert_type):
 
 @app.route("/api/alerts/<alert_type>/logs")
 def api_alert_logs(alert_type):
+    # First try the alerts collection
     logs = list(alerts_col.find({"type": alert_type}, sort=[("timestamp", -1)], limit=200))
+
+    # If no dedicated alerts exist, synthesize logs from the readings collection
+    # This ensures Water Level and Vibration tabs show historical data
+    if not logs and alert_type in ("waterlevel", "vibration"):
+        if alert_type == "waterlevel":
+            # Pull water level history from readings that have a percent value
+            readings = list(readings_col.find(
+                {"percent": {"$exists": True}},
+                sort=[("timestamp", -1)],
+                limit=200
+            ))
+            for r in readings:
+                pct = r.get("percent", 0) or 0
+                if pct > 75:
+                    level = "HIGH_WATER"
+                elif pct > 50:
+                    level = "MEDIUM"
+                elif pct > 25:
+                    level = "LOW"
+                else:
+                    level = "SAFE"
+                logs.append({
+                    "_id": str(r["_id"]),
+                    "type": "waterlevel",
+                    "level": level,
+                    "distanceCm": r.get("distance"),
+                    "percent": pct,
+                    "nodeId": r.get("source", "esp32"),
+                    "timestamp": r.get("timestamp"),
+                })
+        elif alert_type == "vibration":
+            # Pull vibration history from readings
+            readings = list(readings_col.find(
+                {"vibration": {"$exists": True}},
+                sort=[("timestamp", -1)],
+                limit=200
+            ))
+            for r in readings:
+                vib = r.get("vibration", False)
+                logs.append({
+                    "_id": str(r["_id"]),
+                    "type": "vibration",
+                    "level": "HIGH" if vib else "NORMAL",
+                    "nodeId": r.get("source", "esp32"),
+                    "timestamp": r.get("timestamp"),
+                })
+
     for log in logs:
         log["_id"] = str(log["_id"])
         log["timestamp"] = nice_ts(log.get("timestamp"))

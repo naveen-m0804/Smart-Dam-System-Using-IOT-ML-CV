@@ -9,8 +9,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ADMIN_USERNAME = 'onlyme';
-const ADMIN_PASSWORD = '(onlyme123)';
+const ADMIN_USERNAME = import.meta.env.VITE_ADMIN_USERNAME || '';
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
