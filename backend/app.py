@@ -23,7 +23,11 @@ def _cors_origins():
         return "*"
     return [o.strip() for o in raw.split(",") if o.strip()]
 
-CORS(app, resources={r"/*": {"origins": _cors_origins()}}, supports_credentials=False)
+CORS(app, resources={r"/*": {
+    "origins": _cors_origins(),
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+}}, supports_credentials=False)
 
 client = MongoClient(Config.MONGO_URI)
 db = client[Config.DB_NAME]
@@ -111,11 +115,82 @@ def fetch_weather():
             return WEATHER_CACHE["data"]
         return {"temperature": None, "humidity": None, "cloud": None, "rain_prob": None, "sunshine": None, "wind_direction": None, "windspeed": None, "time": None}
 
+# ============================================================
+#  HEALTH / CONNECTIVITY
+# ============================================================
+
 @app.route("/")
 @app.route("/api/health")
 @app.route("/api/ping")
 def health():
-    return jsonify({"status": "ok", "service": "Smart Dam System", "version": "2.0"})
+    is_render = bool(os.getenv('RENDER') or os.getenv('RENDER_SERVICE_ID'))
+    return jsonify({
+        "status": "ok",
+        "service": "Smart Dam System",
+        "version": "2.1",
+        "environment": "cloud" if is_render else "local",
+    })
+
+@app.route("/api/debug/connection")
+def api_debug_connection():
+    """Debug endpoint to verify backend + DB connectivity."""
+    is_render = bool(os.getenv('RENDER') or os.getenv('RENDER_SERVICE_ID'))
+    db_ok = False
+    try:
+        client.admin.command('ping')
+        db_ok = True
+    except:
+        pass
+    return jsonify({
+        "backend": "ok",
+        "mongodb": "ok" if db_ok else "unreachable",
+        "environment": "cloud" if is_render else "local",
+        "mongo_host": Config.MONGO_URI.split("@")[-1].split("/")[0] if "@" in Config.MONGO_URI else "localhost",
+        "db_name": Config.DB_NAME,
+        "cors_origins": _cors_origins(),
+        "human_detection": Config.ENABLE_HUMAN_DETECTION,
+    })
+
+# ============================================================
+#  MANUAL SENSOR INPUT (for local testing without ESP32)
+# ============================================================
+
+@app.route("/api/sensor/manual", methods=["POST"])
+def api_sensor_manual():
+    """Manual sensor data input — use this when ESP32 is not connected.
+    Accepts JSON body with fields:
+      - temp (required): temperature in Celsius
+      - humidity (required): humidity percentage
+      - distance (optional): ultrasonic distance in cm
+      - percent (optional): water level percentage (auto-calculated from distance if omitted)
+      - vibration (optional, default: false)
+    """
+    data = request.get_json() or {}
+    required = ["temp", "humidity"]
+    missing = [f for f in required if f not in data]
+    if missing:
+        return jsonify({"success": False, "error": f"Missing fields: {', '.join(missing)}"}), 400
+
+    # Compute water percent from distance if provided
+    if "distance" in data and "percent" not in data:
+        dam_height = 40  # cm, same as ESP32
+        dist = float(data["distance"])
+        data["percent"] = max(0, min(100, ((dam_height - dist) / dam_height) * 100))
+
+    data.setdefault("percent", 0)
+    data.setdefault("vibration", False)
+    data.setdefault("valve_state", "CLOSED")
+    data.setdefault("human_detected", False)
+    data.setdefault("rain_prediction", 0)
+    data["timestamp"] = datetime.utcnow()
+    data["source"] = "manual"
+
+    readings_col.insert_one(data)
+    return jsonify({"success": True, "message": "Manual reading saved"}), 201
+
+# ============================================================
+#  EXISTING API ENDPOINTS
+# ============================================================
 
 @app.route("/api/location")
 def api_location():
@@ -142,20 +217,20 @@ def api_rainfall():
         latest_reading = readings_col.find_one(sort=[("timestamp", -1)])
         if not latest_reading:
             return jsonify({"error": "No sensor data", "percent": 0, "rainLabel": "NO"}), 400
-        
+
         sensor_temp = latest_reading.get("temp")
         sensor_humidity = latest_reading.get("humidity")
         if sensor_temp is None or sensor_humidity is None:
             return jsonify({"error": "Invalid sensor data", "percent": 0, "rainLabel": "NO"}), 400
-        
+
         weather = fetch_weather()
         cloud_cover = weather.get("cloud")
         windspeed = weather.get("windspeed")
         pressure = 1013.25
-        
+
         if cloud_cover is None or windspeed is None:
             return jsonify({"error": "Weather API incomplete", "percent": 0, "rainLabel": "NO"}), 500
-        
+
         model_input = {
             'Temperature': float(sensor_temp),
             'Humidity': float(sensor_humidity),
@@ -163,20 +238,20 @@ def api_rainfall():
             'Cloud_Cover': float(cloud_cover),
             'Pressure': float(pressure)
         }
-        
+
         predictor = get_rainfall_predictor()
         percent, rain_label = predictor.predict(model_input)
-        
+
         prediction_doc = {
             "percent": float(percent),
             "rainLabel": rain_label,
             "timestamp": datetime.utcnow(),
             "input_data": model_input
         }
-        
+
         db['rainfall_predictions'].update_one({"_id": "current"}, {"$set": prediction_doc}, upsert=True)
         alerts_col.insert_one({"type": "rainfall_prediction", "percent": float(percent), "rainLabel": rain_label, "timestamp": datetime.utcnow()})
-        
+
         return jsonify({"percent": float(percent), "rainLabel": rain_label, "timestamp": nice_ts(prediction_doc["timestamp"])})
     except Exception as e:
         return jsonify({"percent": 0, "rainLabel": "NO", "error": str(e)}), 500
@@ -188,7 +263,7 @@ def api_readings():
         data["timestamp"] = datetime.utcnow()
         readings_col.insert_one(data)
         return jsonify({"success": True}), 201
-    
+
     readings = list(readings_col.find(sort=[("timestamp", -1)], limit=500))
     for r in readings:
         r["_id"] = str(r["_id"])
@@ -218,11 +293,11 @@ def api_valve_status():
         data["timestamp"] = datetime.utcnow()
         valve_status_col.update_one({"_id": "current"}, {"$set": data}, upsert=True)
         return jsonify({"success": True})
-    
+
     status = valve_status_col.find_one({"_id": "current"})
     if not status:
         return jsonify({"state": "CLOSED", "reason": "BOOT", "timestamp": "", "mode": "AUTO"})
-    
+
     control = valve_control_col.find_one({"_id": "current"}) or {}
     return jsonify({
         "state": status.get("state", "CLOSED"),
@@ -238,7 +313,7 @@ def api_valve_control():
         user_role = data.get("userRole", "user")
         if user_role != "admin":
             return jsonify({"success": False, "error": "Admin only"}), 403
-        
+
         control_data = {
             "mode": data.get("mode", "AUTO"),
             "manualCommand": data.get("command", "NONE"),
@@ -247,7 +322,7 @@ def api_valve_control():
         }
         valve_control_col.update_one({"_id": "current"}, {"$set": control_data}, upsert=True)
         return jsonify({"success": True})
-    
+
     control = valve_control_col.find_one({"_id": "current"})
     if not control:
         return jsonify({"mode": "AUTO", "manualCommand": "NONE"})
@@ -277,7 +352,7 @@ def api_dashboard_stats():
         water_alerts = alerts_col.count_documents({"type": "waterlevel"})
         human_alerts = alerts_col.count_documents({"type": "human"})
         valve_status = valve_status_col.find_one({"_id": "current"})
-        
+
         return jsonify({
             "currentReading": {
                 "temperature": latest_reading.get("temp") if latest_reading else 0,
@@ -299,5 +374,9 @@ def api_dashboard_stats():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    print(f"🔥 Backend starting on :{port}")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    is_render = bool(os.getenv('RENDER') or os.getenv('RENDER_SERVICE_ID'))
+    env_label = "☁️  CLOUD (Render)" if is_render else "🏠 LOCAL"
+    print(f"🔥 Backend starting on :{port}  [{env_label}]")
+    print(f"   MongoDB: {Config.MONGO_URI.split('@')[-1].split('/')[0] if '@' in Config.MONGO_URI else 'localhost'}")
+    print(f"   CORS: {_cors_origins()}")
+    app.run(host="0.0.0.0", port=port, debug=not is_render)

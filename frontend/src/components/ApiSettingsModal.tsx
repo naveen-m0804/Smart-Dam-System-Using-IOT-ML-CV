@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Check, X, Loader2 } from 'lucide-react';
+import { Settings, Check, X, Loader2, Wifi, WifiOff } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,20 @@ import { Label } from '@/components/ui/label';
 
 const API_URL_KEY = 'dam_api_url_v2';
 const ENV_API_URL = import.meta.env.VITE_API_URL as string | undefined;
-const DEFAULT_API_URL = ENV_API_URL || 'https://smart-dam-system-using-iot-ml-cv.onrender.com';
+const RENDER_API_URL = 'https://smart-dam-system-using-iot-ml-cv.onrender.com';
+
+function detectDefaultApiUrl(): string {
+  if (ENV_API_URL) return ENV_API_URL;
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '::1') {
+      return 'http://localhost:5000';
+    }
+  }
+  return RENDER_API_URL;
+}
+
+const DEFAULT_API_URL = detectDefaultApiUrl();
 
 export function getApiBaseUrl(): string {
   if (typeof window === 'undefined') return DEFAULT_API_URL;
@@ -22,7 +35,6 @@ export function getApiBaseUrl(): string {
 
 export function setApiBaseUrl(url: string): void {
   localStorage.setItem(API_URL_KEY, url);
-  // Dispatch event so other components know the URL changed
   window.dispatchEvent(new CustomEvent('api-url-changed', { detail: url }));
 }
 
@@ -35,6 +47,7 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
   const [url, setUrl] = useState(getApiBaseUrl());
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [serverEnv, setServerEnv] = useState<string>('');
 
   useEffect(() => {
     setUrl(getApiBaseUrl());
@@ -43,6 +56,7 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
   const testConnection = async () => {
     setTestStatus('testing');
     setErrorMessage('');
+    setServerEnv('');
     
     try {
       const response = await fetch(`${url}/api/ping`, {
@@ -53,6 +67,7 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
         const data = await response.json();
         if (data.status === 'ok') {
           setTestStatus('success');
+          setServerEnv(data.environment || 'unknown');
         } else {
           setTestStatus('error');
           setErrorMessage('Unexpected response from server');
@@ -73,6 +88,15 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
     onUrlChange?.();
   };
 
+  const handleReset = () => {
+    localStorage.removeItem(API_URL_KEY);
+    setUrl(detectDefaultApiUrl());
+    setTestStatus('idle');
+    setServerEnv('');
+  };
+
+  const isLocal = url.includes('localhost') || url.includes('127.0.0.1');
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -86,6 +110,16 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
         </DialogHeader>
         
         <div className="space-y-4 py-4">
+          {/* Current Environment Indicator */}
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+            isLocal 
+              ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+              : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+          }`}>
+            {isLocal ? <WifiOff className="w-4 h-4" /> : <Wifi className="w-4 h-4" />}
+            <span>Mode: {isLocal ? 'Local (localhost)' : 'Cloud (Render)'}</span>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="api-url">Backend API URL</Label>
             <Input
@@ -94,6 +128,7 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
               onChange={(e) => {
                 setUrl(e.target.value);
                 setTestStatus('idle');
+                setServerEnv('');
               }}
               placeholder="https://smart-dam-system-using-iot-ml-cv.onrender.com"
               className="font-mono text-sm"
@@ -117,7 +152,7 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
             {testStatus === 'success' && (
               <div className="flex items-center gap-2 text-success">
                 <Check className="w-4 h-4" />
-                <span className="text-sm">Connected!</span>
+                <span className="text-sm">Connected! ({serverEnv})</span>
               </div>
             )}
             
@@ -134,34 +169,40 @@ export function ApiSettingsModal({ onUrlChange }: ApiSettingsModalProps) {
             <Label className="text-xs text-muted-foreground">Quick presets:</Label>
             <div className="flex flex-wrap gap-2">
               {[
-                'https://smart-dam-system-using-iot-ml-cv.onrender.com',
-                'http://localhost:5000',
-                'http://127.0.0.1:5000',
+                { label: '☁️ Render (Cloud)', url: RENDER_API_URL },
+                { label: '🏠 localhost:5000', url: 'http://localhost:5000' },
+                { label: '🏠 127.0.0.1:5000', url: 'http://127.0.0.1:5000' },
               ].map((preset) => (
                 <Button
-                  key={preset}
+                  key={preset.url}
                   variant="secondary"
                   size="sm"
                   className="text-xs"
                   onClick={() => {
-                    setUrl(preset);
+                    setUrl(preset.url);
                     setTestStatus('idle');
+                    setServerEnv('');
                   }}
                 >
-                  {preset.replace('http://', '')}
+                  {preset.label}
                 </Button>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3">
-          <Button variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
+        <div className="flex justify-between gap-3">
+          <Button variant="ghost" size="sm" onClick={handleReset} className="text-muted-foreground">
+            Reset to Auto
           </Button>
-          <Button onClick={handleSave}>
-            Save & Apply
-          </Button>
+          <div className="flex gap-3">
+            <Button variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave}>
+              Save & Apply
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

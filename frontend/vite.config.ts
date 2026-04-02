@@ -11,6 +11,19 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    // Proxy /api requests to the local Flask backend during development.
+    // This avoids CORS issues entirely when running both frontend & backend locally.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        // Only proxy in dev when no VITE_API_URL override is set
+        bypass(req) {
+          if (process.env.VITE_API_URL) return req.url;
+          return undefined;
+        },
+      },
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

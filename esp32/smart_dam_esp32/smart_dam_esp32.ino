@@ -7,7 +7,19 @@
 
 #define WIFI_SSID   "naveen"
 #define WIFI_PASS   "naveensai"
-#define BACKEND_URL "https://smart-dam-system-using-iot-ml-cv.onrender.com"
+
+// ========== BACKEND URL CONFIGURATION ==========
+// Set USE_LOCAL_SERVER to true when running backend on your local machine
+// Set USE_LOCAL_SERVER to false when using the Render cloud deployment
+#define USE_LOCAL_SERVER false
+
+// Local backend URL - change IP to your computer's local IP address
+// Find your IP: Windows -> ipconfig, Linux/Mac -> ifconfig
+#define LOCAL_BACKEND_URL  "http://192.168.1.100:5000"
+// Cloud backend URL (Render deployment)
+#define CLOUD_BACKEND_URL  "https://smart-dam-system-using-iot-ml-cv.onrender.com"
+
+#define BACKEND_URL (USE_LOCAL_SERVER ? LOCAL_BACKEND_URL : CLOUD_BACKEND_URL)
 #define DAM_HEIGHT_CM 40
 
 // Intervals (ms)

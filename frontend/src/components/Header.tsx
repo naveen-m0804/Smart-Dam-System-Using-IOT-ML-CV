@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { LoginModal } from './LoginModal';
+import { ApiSettingsModal } from './ApiSettingsModal';
 
 export function Header() {
   const { isLoggedIn, logout } = useAuth();
@@ -28,6 +29,8 @@ export function Header() {
 
           {/* User Section */}
           <div className="flex items-center gap-4">
+            {/* API Settings gear icon */}
+            <ApiSettingsModal />
             
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
