@@ -6,6 +6,9 @@
 
 ---
 
+   ![architecture_diagram_1775017570574](https://github.com/user-attachments/assets/994ffede-3f83-41d3-b6ea-a69fde83fbb7)
+
+
 ## 📌 Table of Contents
 
 1. [Abstract](#abstract)
