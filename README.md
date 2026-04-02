@@ -1,106 +1,84 @@
 # 🌊 Smart Dam System — IoT + ML + Computer Vision
 
-> An intelligent, automated dam monitoring and control platform that combines ESP32-based IoT sensors, Machine Learning flood prediction, and Computer Vision water level detection — with a real-time web dashboard for remote monitoring and automated gate control.
+> An intelligent, automated dam monitoring and control platform that combines ESP32-based IoT sensors, Machine Learning rainfall prediction, and Computer Vision human detection — with a real-time web dashboard for remote monitoring and automated gate control.
 
 **🔗 Live Demo:** [damflow.vercel.app](https://damflow.vercel.app)
 
 ---
 
+   ![architecture_diagram_1775017570574](https://github.com/user-attachments/assets/994ffede-3f83-41d3-b6ea-a69fde83fbb7)
+
+
 ## 📌 Table of Contents
 
 1. [Abstract](#abstract)
 2. [Problem Statement](#problem-statement)
-3. [Why This System?](#why-this-system)
-4. [System Architecture](#system-architecture)
-5. [Key Features](#key-features)
-6. [Technology Stack](#technology-stack)
-7. [Module Breakdown](#module-breakdown)
+3. [System Architecture](#system-architecture)
+4. [Key Features](#key-features)
+5. [Technology Stack](#technology-stack)
+6. [Module Breakdown](#module-breakdown)
    - [IoT Layer — ESP32](#1-iot-layer--esp32)
-   - [ML Layer — Flood Prediction](#2-ml-layer--flood-prediction)
-   - [CV Layer — Visual Water Level Detection](#3-cv-layer--visual-water-level-detection)
-   - [Backend — API & Data Hub](#4-backend--api--data-hub)
+   - [ML Layer — Rainfall Prediction](#2-ml-layer--rainfall-prediction)
+   - [CV Layer — Human Detection for Safety](#3-cv-layer--human-detection-for-safety)
+   - [Backend — API Hub](#4-backend--api-hub)
    - [Frontend — Dashboard](#5-frontend--dashboard)
-8. [System Flow](#system-flow)
-9. [Data Flow Diagram](#data-flow-diagram)
-10. [Hardware Components](#hardware-components)
-11. [Folder Structure](#folder-structure)
-12. [Getting Started](#getting-started)
-13. [Environment Variables](#environment-variables)
-14. [API Overview](#api-overview)
-15. [Screenshots & Output](#screenshots--output)
-16. [Future Enhancements](#future-enhancements)
-17. [Contributing](#contributing)
-18. [License](#license)
+7. [Hardware Components](#hardware-components)
+8. [Folder Structure](#folder-structure)
+9. [Getting Started](#getting-started)
+10. [Environment Variables](#environment-variables)
+11. [API Overview](#api-overview)
 
 ---
 
 ## Abstract
 
-The Smart Dam System is an integrated platform that brings together the Internet of Things (IoT), Machine Learning (ML), and Computer Vision (CV) to automate and intelligently monitor dam operations. Traditional dam management relies heavily on manual inspections and reactive decision-making, which introduces dangerous delays during critical events like floods or sudden water level spikes.
+The Smart Dam System integrates Internet of Things (IoT), Machine Learning (ML), and Computer Vision (CV) to automate dam operations safely. Traditional dam management relies on manual inspections, which causes delays during critical events like unexpected rains or sudden water level spikes, and poses severe safety risks to operators or nearby civilians.
 
-This system replaces that manual workflow with a tri-layered intelligent architecture. An ESP32 microcontroller continuously reads physical sensor data — water level, flow rate, rainfall, and gate position — and pushes this data to the cloud in real time. A Python-based Machine Learning model analyzes incoming sensor streams to predict flood risk, classify dam status, and trigger automated gate control decisions. Simultaneously, a Computer Vision module processes camera feed or image input to independently verify water levels visually, adding a hardware-independent layer of confirmation.
+This system replaces the manual workflow. An ESP32 pushes live local environmental and telemetry data (water level, temperature, humidity, structural vibration) to a centralized Python Flask server. A Machine Learning model predicts expected rainfall utilizing both sensor data and API-based weather forecasts. A Computer Vision module powered by YOLOv8 monitors the dam area for human presence to act as a safety kill-switch, preventing automated gates from opening and endangering people nearby.
 
-All data is aggregated by a TypeScript backend and served to a responsive web dashboard where operators can monitor real-time telemetry, review alerts, view historical trends, and override automated decisions when needed. The result is a system that is proactive rather than reactive — capable of preventing damage before it occurs.
+Data is presented on a dynamic React-based dashboard where operators can monitor everything remotely, ensuring a proactive and safety-first approach to dam water regulation.
 
 ---
 
 ## Problem Statement
 
-Dam management in India and across the world faces several critical challenges:
+Dam management faces several critical challenges:
 
-- **Manual Monitoring Risk** — Most dams still rely on manual water level gauge readings, which are error-prone and infeasible during nighttime or extreme weather conditions.
-- **Delayed Flood Response** — Reactive decision-making means gate operations often happen too late after rainfall events, causing downstream flooding.
-- **Lack of Predictive Intelligence** — Existing systems have no mechanism to forecast flood conditions hours in advance based on sensor trends and historical data.
-- **No Remote Visibility** — Dam operators and disaster management officials lack access to real-time dam telemetry from remote locations.
-- **Single Point of Failure** — Systems that rely only on one sensor type are vulnerable to hardware failure — a combined IoT + CV approach provides redundancy.
+- **Manual Monitoring Risk** — Relying on manual gauge readings is slow and dangerous during extreme weather.
+- **Reactive Operation** — Gate operations often occur too late, worsening downstream flooding.
+- **Safety Hazards** — Automated gates can pose severe risks to humans near the spillway or operation zone if triggered without visual clearance.
+- **Lack of Predictive Weather** — Without localized predictive ML modeling, preemptive water discharge is difficult.
 
-This system addresses all of these by building a fully automated, remotely accessible, multi-modal dam intelligence platform.
-
----
-
-## Why This System?
-
-| Traditional Dam Management | Smart Dam System |
-|---|---|
-| Manual water level readings | Real-time IoT sensor data pushed every few seconds |
-| Reactive gate operation | Proactive automated gate control via ML predictions |
-| No flood forecasting | ML model predicts flood risk before it occurs |
-| No visual verification | Computer Vision independently confirms water level |
-| On-site only monitoring | Remote web dashboard accessible from anywhere |
-| No historical analysis | Full historical data logging with visual trend charts |
-| No alert system | Automated alerts for critical threshold breaches |
+This system tackles these issues through automated IoT telemetry, predictive ML insights, and AI-driven visual safety validation.
 
 ---
 
 ## System Architecture
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────┐
-│                        PHYSICAL LAYER (Hardware)                  │
-│  Water Level Sensor · Flow Rate Sensor · Rain Sensor · Camera    │
+│                        PHYSICAL LAYER (Hardware)                 │
+│  Ultrasonic Sensor · DHT11 · Vibration Sensor · Servo Motor      │
 │                    ESP32 Microcontroller                         │
 └────────────────────────────┬─────────────────────────────────────┘
-                             │ HTTP / MQTT (WiFi)
+                             │ HTTP (WiFi)
 ┌────────────────────────────▼─────────────────────────────────────┐
-│                     BACKEND (Node.js + TypeScript)                │
-│   REST API  ·  WebSocket Server  ·  Data Ingestion Endpoint      │
-│         Time-Series Storage  ·  Alert Engine                     │
-└──────┬─────────────────────────────────────────┬─────────────────┘
-       │                                          │
-┌──────▼─────────────┐                ┌──────────▼──────────────┐
-│   ML SERVICE       │                │   CV SERVICE             │
-│   (Python)         │                │   (Python)               │
-│                    │                │                           │
-│  Flood Risk Model  │                │  Image / Camera Feed      │
-│  Anomaly Detection │                │  Water Level Extraction   │
-│  Gate Control      │                │  Visual Confirmation      │
-│  Recommendations   │                │  (OpenCV / CNN)           │
-└──────┬─────────────┘                └──────────┬───────────────┘
-       │                                          │
-┌──────▼──────────────────────────────────────────▼───────────────┐
-│                   FRONTEND DASHBOARD (React + TypeScript)         │
-│  Real-Time Telemetry  ·  Alerts  ·  Historical Charts            │
-│  Gate Control Panel  ·  CV Feed Viewer  ·  Prediction Display    │
+│                     BACKEND (Python Flask)                       │
+│    REST API  ·  Threshold Alerts  · MongoDB Integration          │
+│                                                                  │
+│  ┌──────────────────────┐              ┌──────────────────────┐  │
+│  │     ML SERVICE       │              │     CV SERVICE       │  │
+│  │                      │              │                      │  │
+│  │ Scikit-Learn Model   │              │ YOLOv8 Model         │  │
+│  │ Rainfall Prediction  │              │ Human Detection      │  │
+│  │ (Sensors + Weather)  │              │ Safety Override      │  │
+│  └──────────────────────┘              └──────────────────────┘  │
+└──────┬───────────────────────────────────────────────────────────┘
+       │                                          
+┌──────▼───────────────────────────────────────────────────────────┐
+│                   FRONTEND DASHBOARD (React + TypeScript)        │
+│    Real-Time Telemetry · Historical Charts · Gate Control        │
+│    Active Alerts · Human Detection Status                        │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -109,312 +87,114 @@ This system addresses all of these by building a fully automated, remotely acces
 ## Key Features
 
 ### 📡 IoT Real-Time Monitoring
-- ESP32 collects water level, flow rate, and rainfall data continuously
-- Data pushed to backend at configurable intervals via WiFi
-- Gate position status tracked and reported
+- ESP32 continuously collects water level, temperature, humidity, and vibration data.
+- Automatically controls the gate servo based on defined water level percentage thresholds.
+- Issues loud on-site buzzer alerts for structural vibrations or human detection.
 
-### 🤖 Machine Learning Flood Prediction
-- Trained model classifies current dam state: Normal, Warning, Critical, or Flood Risk
-- Predicts future water level trends based on sensor history
-- Automatically recommends or triggers gate open/close decisions
-- Anomaly detection flags unusual sensor readings
+### 🤖 Machine Learning Rainfall Prediction
+- Scikit-learn model evaluates ambient conditions (Temperature & Humidity from ESP32 + Windspeed & Cloud Cover from Open-Meteo API).
+- Predicts rainfall percentage and labels risk levels proactively.
 
-### 👁️ Computer Vision Water Level Detection
-- Processes live camera feed or uploaded images of the dam
-- Detects water surface level independently from IoT sensors
-- Provides visual confirmation layer separate from hardware sensors
-- Uses image segmentation and edge detection via OpenCV
+### 👁️ Computer Vision Safety Override
+- Utilizes the **YOLOv8** object detection model for continuous monitoring.
+- Identifies humans loitering near the dam gate.
+- If a human is detected, it overrides auto-open commands and locks the gate for safety (`HUMAN_SAFETY` lock), while sounding the hardware buzzer.
 
 ### 📊 Real-Time Web Dashboard
-- Live sensor telemetry with auto-updating charts
-- Visual alert banners for Warning / Critical / Flood states
-- Historical data visualization with trend analysis
-- Remote gate control override for operators
-- CV feed display integrated in dashboard
-
-### 🔔 Alert & Notification System
-- Threshold-based alerts for water level, flow rate, and rainfall
-- System state transitions trigger real-time dashboard alerts
-- Designed to integrate with SMS/email notification services
-
-### 🔄 Automated Gate Control
-- ML model drives gate open/close commands automatically
-- Manual override available from dashboard
-- Gate position is confirmed by ESP32 feedback sensor
+- Fully responsive dashboard built with React, Vite, and Tailwind CSS.
+- Live telemetry panel (Water level, temperature, humidity, gate state).
+- Graphical representation of historical sensor trends.
+- Manual remote-override for gate control (Admin only).
 
 ---
 
 ## Technology Stack
 
 ### Frontend
-
-| Technology | Purpose |
-|---|---|
-| **React.js** | Component-based UI library |
-| **TypeScript** | Type-safe JavaScript for robust frontend code |
-| **Tailwind CSS** | Mobile-responsive utility-first styling |
-| **Recharts / Chart.js** | Real-time and historical data visualization |
-| **WebSocket Client** | Live data streaming from backend |
-| **Vercel** | Frontend deployment and hosting |
+- **React.js & Vite** — Component-based UI library & fast bundler.
+- **TypeScript** — Strictly-typed code for robust frontend integration.
+- **Tailwind CSS & Shadcn/UI** — Modern utility-first styling and accessible design.
+- **Recharts** — Real-time tracking graphs.
 
 ### Backend
-
-| Technology | Purpose |
-|---|---|
-| **Node.js** | JavaScript runtime environment |
-| **Express.js** | REST API framework |
-| **TypeScript** | Type-safe server-side development |
-| **WebSocket (ws)** | Real-time push to connected dashboard clients |
-| **PostgreSQL / SQLite** | Time-series sensor data storage |
-
-### ML & Computer Vision
-
-| Technology | Purpose |
-|---|---|
-| **Python** | Core language for ML and CV modules |
-| **scikit-learn / TensorFlow** | Flood prediction and classification model |
-| **OpenCV** | Image processing for visual water level detection |
-| **NumPy / Pandas** | Data manipulation and preprocessing |
-| **Flask / FastAPI** | Lightweight API to expose ML and CV endpoints |
+- **Python (Flask)** — Lightweight, highly performant RESTful server.
+- **MongoDB (PyMongo)** — NoSQL time-series sensor data and alert logging.
+- **Scikit-Learn** — Machine learning for the rainfall prediction inference.
+- **Ultralytics (YOLOv8)** — Core CV engine for human presence detection.
+- **Open-Meteo API** — Supplementary weather conditions ingestion.
 
 ### IoT — ESP32
-
-| Technology | Purpose |
-|---|---|
-| **ESP32 Microcontroller** | Core IoT hardware unit |
-| **C++ (Arduino framework)** | Firmware programming |
-| **WiFi Library** | Network connectivity |
-| **HTTPClient** | Sending sensor data to backend API |
-| **Ultrasonic / Float Sensor** | Water level measurement |
-| **Flow Rate Sensor (YF-S201)** | Measuring water flow |
-| **Rain Sensor Module** | Rainfall detection |
-| **Servo Motor** | Dam gate actuation |
+- **C++ (Arduino framework)** — Firmware logic.
+- **HTTPClient** — Sending sensor frames to the Flask server.
+- **Hardware Integration** — DHT11, Ultrasonic (HC-SR04), Vibration sensor, Servo.
 
 ---
 
 ## Module Breakdown
 
 ### 1. IoT Layer — ESP32
+The local ESP32 controller manages hardware connectivity:
+- Calculates water depth using ultrasonic signals.
+- Reads ambient temperature and humidity heavily necessary for ML predictions.
+- Listens for structural vibration events to warn against mechanical failure.
+- Receives automated or user-triggered override commands via API polling to actuate the gate servo.
 
-The ESP32 is the physical edge device at the dam site. It runs firmware written in C++ using the Arduino framework and is responsible for:
+### 2. ML Layer — Rainfall Prediction
+Rather than depending exclusively on inaccurate physical rain sensors, the system integrates Python-based ML modeling. By blending local physical telemetry (temperature, humidity) with cloud API weather metrics (cloud cover, windspeed, pressure), it yields a localized `RainLabel` probability which dictates automated gate responses alongside current water levels.
 
-- **Reading sensors** — water level (ultrasonic or float sensor), flow rate (YF-S201 pulse counter), rainfall (analog rain sensor), and gate servo position.
-- **Processing raw values** — converting pulse counts to flow rate (litres/min), distance to water level (cm/percentage), and voltage to rainfall intensity.
-- **Transmitting data** — packaging sensor readings as a JSON payload and sending them via HTTP POST to the backend data ingestion endpoint at regular intervals (configurable, default every 5 seconds).
-- **Receiving commands** — polling or listening for gate control commands from the backend and actuating the servo motor accordingly.
+### 3. CV Layer — Human Detection for Safety
+A background Python thread continuously runs a YOLO object detector (powered by `yolov8n.pt`). If a person is detected in the operational zone, a flag is set on the backend. The ESP32 reads this flag and enters a hard-lock `HUMAN_SAFETY` status, refusing to open the spillway gate even if the water levels demand it, in strictly preventing accidental tragedies.
 
-The ESP32 connects to the local WiFi network at the dam site. The backend URL and WiFi credentials are stored in the firmware configuration.
-
-```
-Sensors → ESP32 → JSON Payload → HTTP POST → Backend API
-Backend API → Gate Command → ESP32 → Servo Motor → Gate Movement
-```
-
-### 2. ML Layer — Flood Prediction
-
-The Python ML service is a separate microservice that consumes sensor data and provides intelligent analysis:
-
-- **Classification Model** — Trained on historical dam sensor data to classify the current state as one of: `NORMAL`, `WATCH`, `WARNING`, `CRITICAL`, or `FLOOD`.
-- **Water Level Trend Prediction** — A regression model forecasts the next N minutes of water level based on recent sensor readings and rainfall.
-- **Anomaly Detection** — Flags sensor readings that deviate abnormally from historical patterns, which could indicate sensor failure or unusual hydrological events.
-- **Gate Recommendation** — Based on predicted water level and current state, the model outputs a recommended gate action: `OPEN`, `CLOSE`, or `MAINTAIN`.
-- **Exposure** — The ML service exposes a REST API (Flask/FastAPI) that the backend calls after each new sensor reading to get the current prediction and recommendation.
-
-**Model Training:**
-The model is trained on a dataset of sensor readings labeled with dam states. Features include current water level, rate of change of water level, flow rate, cumulative rainfall, and hour of day.
-
-### 3. CV Layer — Visual Water Level Detection
-
-The Computer Vision module provides hardware-independent water level estimation using image analysis:
-
-- **Input** — Still images uploaded via the dashboard or frames from a camera stream pointed at the dam wall or a marked water gauge.
-- **Processing Pipeline:**
-  1. Image preprocessing (resize, normalize, grayscale conversion)
-  2. Edge detection (Canny / Sobel) to find water surface boundary
-  3. Reference line calibration against known gauge markings
-  4. Water level percentage extraction from detected surface position
-- **Output** — Water level percentage value and an annotated image showing the detected surface line, which is displayed in the dashboard.
-- **Purpose** — Acts as a backup confirmation for IoT sensor readings. If the CV-detected level significantly diverges from the sensor reading, an inconsistency alert is raised.
-
-### 4. Backend — API & Data Hub
-
-The Node.js/TypeScript backend is the central hub that:
-
-- Receives sensor data from the ESP32 via a POST endpoint and stores it in the database.
-- After each ingestion, calls the ML service API to get flood prediction and gate recommendation.
-- Compares ML prediction against configured thresholds and generates alerts.
-- Broadcasts real-time updates to all connected dashboard clients via WebSocket.
-- Provides REST endpoints for the dashboard to fetch historical data, current status, and trigger manual gate commands.
-- Forwards gate commands to the ESP32 (either through polling or a push mechanism).
-- Accepts CV image analysis results and stores them alongside sensor readings.
+### 4. Backend — API Hub
+Built entirely on Flask and PyMongo. 
+- Normalizes incoming sensor data.
+- Aggregates external weather APIs.
+- Coordinates ML and CV inferences logic cleanly alongside REST API traffic.
+- Tracks granular history in MongoDB for deep analytical querying by the React interface.
 
 ### 5. Frontend — Dashboard
-
-The React/TypeScript dashboard is the operator-facing interface:
-
-- **Live Telemetry Panel** — Displays current water level (%), flow rate (L/min), rainfall (mm/hr), gate position, and ML-predicted dam state with color-coded status badge.
-- **Real-Time Charts** — Line charts updating every few seconds showing water level, flow rate, and rainfall trends over the last hour/day.
-- **Flood Risk Indicator** — Visual gauge showing the ML model's current flood risk score.
-- **CV Feed Panel** — Displays the annotated camera image with detected water level line.
-- **Alert Feed** — Live scrolling feed of system alerts with timestamps and severity levels.
-- **Gate Control Panel** — Buttons to manually open, close, or set gate position, with current gate status display.
-- **Historical View** — Date-range picker to view historical sensor data as charts and downloadable CSV.
-
----
-
-## System Flow
-
-```
-[Physical Dam Site]
-        │
-        │  Sensors continuously read water conditions
-        ▼
-[ESP32 Firmware]
-        │
-        │  Every 5 seconds: POST /api/sensor-data
-        ▼
-[Backend — Node.js/TS]
-        │
-        ├──► Store reading in database
-        │
-        ├──► Call ML Service API → Get flood prediction + gate recommendation
-        │
-        ├──► Check thresholds → Generate alerts if needed
-        │
-        ├──► Broadcast updated state via WebSocket to all dashboard clients
-        │
-        └──► If ML recommends gate action: Send command to ESP32
-                        │
-                        ▼
-              [ESP32 actuates Servo Motor → Gate moves]
-
-[Camera / Image Upload]
-        │
-        │  POST /api/cv/analyze (image)
-        ▼
-[CV Service — Python]
-        │
-        │  Detect water level from image → Return level % + annotated image
-        ▼
-[Backend] ──► Store CV result ──► Broadcast to dashboard
-
-[Dashboard — React/TS]
-        │
-        ├──► WebSocket: Receive live sensor updates and alerts
-        ├──► REST: Fetch historical data for charts
-        ├──► Display: Telemetry, CV feed, charts, alerts, gate panel
-        └──► User Action: Manual gate command → POST /api/gate/control
-```
-
----
-
-## Data Flow Diagram
-
-```
-┌────────────┐    JSON POST     ┌──────────────┐    Query      ┌──────────────┐
-│   ESP32    │ ─────────────► │   Backend    │ ──────────► │   Database   │
-│  Sensors   │                 │  (Express/TS)│ ◄──────────  │ (PostgreSQL) │
-└────────────┘                 └──────┬───────┘   Results     └──────────────┘
-                                      │
-                         ┌────────────┼─────────────┐
-                         │            │              │
-                  ML API Call    WebSocket       CV Storage
-                         │         Push              │
-                         ▼            ▼              │
-                ┌────────────┐  ┌──────────┐         │
-                │ ML Service │  │Dashboard │ ◄────────┘
-                │ (Python/   │  │(React/TS)│
-                │  Flask)    │  └──────────┘
-                └────────────┘
-                         │
-                Gate Recommendation
-                         │
-                         ▼
-                ┌────────────────┐
-                │ ESP32 Gate Cmd │
-                │ → Servo Motor  │
-                └────────────────┘
-```
+A sleek, dark-themed control center built using Vite and Tailwind. Polling real-time API routes to display metrics dynamically on modern charts, allowing remote admin operators to override system choices or assess structural logs without leaving their desks.
 
 ---
 
 ## Hardware Components
 
-| Component | Model / Type | Purpose |
-|---|---|---|
-| **Microcontroller** | ESP32 DevKit | Core IoT processing unit |
-| **Water Level Sensor** | Ultrasonic (HC-SR04) or Float Sensor | Measuring water depth/level |
-| **Flow Rate Sensor** | YF-S201 Hall Effect | Measuring water outflow in L/min |
-| **Rain Sensor** | Analog Rain Drop Module | Detecting and measuring rainfall |
-| **Gate Actuator** | Servo Motor (SG90/MG996R) | Physically opening/closing dam gate |
-| **Camera Module** | ESP32-CAM or USB Camera | Live visual feed for CV module |
-| **Power Supply** | 5V / 3.3V regulated | Powering ESP32 and sensors |
-| **WiFi Network** | Local router / Hotspot | Connectivity to cloud backend |
+| Component | Purpose |
+|---|---|
+| **ESP32 DevKit** | Primary WiFi-enabled MCU orchestrating sensors. |
+| **Ultrasonic Sensor (HC-SR04)** | Tracks the active water level based on distance. |
+| **DHT11 Sensor** | Records ambient temperature & humidity. |
+| **Vibration Sensor** | Detects structural anomalies or shock. |
+| **Servo Motor (SG90/MG996R)** | Actuates the dam gate (Valve Open/Closed). |
+| **Active Buzzer** | Audio alarm for high water, human detection, or vibration. |
 
 ---
 
 ## Folder Structure
 
-```
+```text
 Smart-Dam-System-Using-IOT-ML-CV/
 │
 ├── esp32/
 │   └── smart_dam_esp32/
-│       ├── smart_dam_esp32.ino       # Main Arduino sketch
-│       ├── config.h                  # WiFi credentials, backend URL, pins
-│       ├── sensors.h                 # Sensor reading functions
-│       └── gate_control.h            # Servo motor control logic
+│       └── smart_dam_esp32.ino       # Main Arduino sketch C++ code
 │
 ├── backend/
-│   ├── src/
-│   │   ├── index.ts                  # Express + WebSocket server entry
-│   │   ├── routes/
-│   │   │   ├── sensorData.ts         # POST /api/sensor-data (ESP32 ingestion)
-│   │   │   ├── gateControl.ts        # POST /api/gate/control
-│   │   │   ├── history.ts            # GET /api/history
-│   │   │   └── cv.ts                 # POST /api/cv/analyze
-│   │   ├── services/
-│   │   │   ├── mlService.ts          # Calls Python ML API
-│   │   │   ├── alertEngine.ts        # Threshold evaluation + alert generation
-│   │   │   └── websocket.ts          # WebSocket broadcast manager
-│   │   └── db/
-│   │       ├── index.ts              # Database connection pool
-│   │       └── schema.sql            # Table definitions
-│   ├── package.json
-│   └── tsconfig.json
+│   ├── app.py                        # Flask server entry point & API routes
+│   ├── config.py                     # Backend settings & env mapping
+│   ├── requirements.txt              # PyPI dependencies
+│   ├── models/                       # Scikit-learn trained models
+│   ├── utils/
+│   │   ├── human_detection.py        # YOLOv8 implementation wrapper
+│   │   └── rainfall_predictor.py     # ML prediction script
+│   └── yolov8n.pt                    # YOLO model weights
 │
 ├── frontend/
-│   ├── src/
-│   │   ├── App.tsx                   # Root component + routing
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx         # Main monitoring page
-│   │   │   └── History.tsx           # Historical data viewer
-│   │   ├── components/
-│   │   │   ├── TelemetryPanel.tsx    # Live sensor readings
-│   │   │   ├── WaterLevelChart.tsx   # Real-time level chart
-│   │   │   ├── FloodRiskGauge.tsx    # ML risk indicator
-│   │   │   ├── CVFeedPanel.tsx       # Annotated CV image display
-│   │   │   ├── AlertFeed.tsx         # Scrolling alert list
-│   │   │   └── GateControlPanel.tsx  # Manual gate controls
-│   │   ├── hooks/
-│   │   │   └── useWebSocket.ts       # WebSocket connection hook
-│   │   └── types/
-│   │       └── dam.types.ts          # Shared TypeScript interfaces
-│   ├── package.json
-│   └── tsconfig.json
+│   ├── package.json                  # React + Vite deps
+│   ├── vite.config.ts                # Vite config
+│   ├── index.html
+│   └── src/                          # React source (Pages, Components, API bindings)
 │
-├── ml/                               # (Python ML & CV service)
-│   ├── app.py                        # Flask/FastAPI entry point
-│   ├── model/
-│   │   ├── train.py                  # Model training script
-│   │   ├── predict.py                # Prediction inference
-│   │   └── flood_model.pkl           # Saved trained model
-│   ├── cv/
-│   │   ├── water_level_detection.py  # OpenCV water level extractor
-│   │   └── annotate.py               # Image annotation utilities
-│   └── requirements.txt
-│
-├── .gitignore
 └── README.md
 ```
 
@@ -424,85 +204,40 @@ Smart-Dam-System-Using-IOT-ML-CV/
 
 ### Prerequisites
 - Node.js v18+
-- Python 3.9+
-- Arduino IDE with ESP32 board support installed
-- MongoDB
-- Git
+- Python 3.9+ 
+- MongoDB (Running locally or via Atlas)
+- Arduino IDE with ESP32 board support
 
----
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/naveen-m0804/Smart-Dam-System-Using-IOT-ML-CV.git
-cd Smart-Dam-System-Using-IOT-ML-CV
-```
-
----
-
-### 2. Flash the ESP32 Firmware
-
-1. Open Arduino IDE
-2. Install the ESP32 board package via Board Manager
-3. Install required libraries: `WiFi`, `HTTPClient`, `ESP32Servo`
-4. Open `esp32/smart_dam_esp32/smart_dam_esp32.ino`
-5. Edit `config.h` with your WiFi credentials and backend URL:
+### 1. Flash the ESP32
+1. Open Arduino IDE and add the ESP32 board index.
+2. Install `ArduinoJson`, `DHT sensor library`, `ESP32Servo`.
+3. Open `esp32/smart_dam_esp32/smart_dam_esp32.ino`.
+4. Update definitions for your Wi-Fi and backend IP:
 ```cpp
-#define WIFI_SSID     "your_wifi_ssid"
-#define WIFI_PASSWORD "your_wifi_password"
-#define BACKEND_URL   "http://your-backend-ip:5000/api/sensor-data"
+#define WIFI_SSID   "your_wifi_ssid"
+#define WIFI_PASS   "your_wifi_password"
+#define BACKEND_URL "http://YOUR_LOCAL_IP:5000"
 ```
-6. Select your ESP32 board and COM port, then upload
+5. Compile and upload to ESP32.
 
----
-
-### 3. Set Up the ML / CV Service
-
-```bash
-cd ml
-pip install -r requirements.txt
-
-# Train the model (if not already trained)
-python model/train.py
-
-# Start the ML service
-python app.py
-# Runs on http://localhost:8000
-```
-
----
-
-### 4. Set Up the Backend
-
+### 2. Set Up Python Backend
 ```bash
 cd backend
-npm install
+python -m venv venv
+# Activate venv: `venv\Scripts\activate` (Windows) or `source venv/bin/activate` (Mac/Linux)
 
-# Configure environment variables
-cp .env.example .env
-# Edit .env with your values
+pip install -r requirements.txt
 
-# Run database migrations
-npm run migrate
-
-# Start development server
-npm run dev
-# Runs on http://localhost:5000
+# Ensure MongoDB is running locally on port 27017, then:
+python app.py
 ```
 
----
-
-### 5. Set Up the Frontend
-
+### 3. Set Up React Frontend
 ```bash
 cd frontend
 npm install
-
-# Configure environment
-cp .env.example .env
-# Set REACT_APP_API_BASE_URL and REACT_APP_WS_URL
-
-npm start
-# Runs on http://localhost:3000
+npm run dev
+# The dashboard is now accessible at http://localhost:5173 
 ```
 
 ---
@@ -510,120 +245,38 @@ npm start
 ## Environment Variables
 
 ### Backend `.env`
+Create a `.env` in the `backend/` directory:
 ```env
+MONGO_URI=mongodb://localhost:27017/
+DB_NAME=smart_dam_db
+MODEL_PATH=models/rainfall_model.pkl
+DETECTION_INTERVAL=3
+ENABLE_HUMAN_DETECTION=true
+CORS_ORIGINS=*
+DAM_LATITUDE=12.9631
+DAM_LONGITUDE=79.9424
 PORT=5000
-DATABASE_URL=postgresql://postgres:password@localhost:5432/smartdam
-
-# ML Service URL
-ML_SERVICE_URL=http://localhost:8000
-
-# Alert Thresholds
-WATER_LEVEL_WARNING=70
-WATER_LEVEL_CRITICAL=85
-WATER_LEVEL_FLOOD=95
-FLOW_RATE_MAX=500
-
-# CORS
-CLIENT_URL=http://localhost:3000
 ```
 
 ### Frontend `.env`
+Create a `.env` in the `frontend/` directory (Optional, defaults generally work):
 ```env
-REACT_APP_API_BASE_URL=http://localhost:5000
-REACT_APP_WS_URL=ws://localhost:5000
-```
-
-### ML Service `.env`
-```env
-PORT=8000
-MODEL_PATH=model/flood_model.pkl
+VITE_API_URL=http://localhost:5000
 ```
 
 ---
 
 ## API Overview
 
-### Sensor Data Ingestion (from ESP32)
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/sensor-data` | Receive sensor readings from ESP32 |
+### ESP32 Telemetry
+- `POST /api/readings` - Accepts JSON payload arrays of `temp`, `humidity`, `percent` (water level), `vibration` states from ESP32.
+- `GET /api/valve/control` - Returns current gate override mode (`AUTO` vs `OPEN`/`CLOSE`).
 
-**Payload:**
-```json
-{
-  "water_level_pct": 72.5,
-  "flow_rate_lpm": 124.3,
-  "rainfall_mm": 12.0,
-  "gate_position": "OPEN",
-  "timestamp": "2026-02-20T10:30:00Z"
-}
-```
-
-### Dashboard Data
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/status/current` | Latest sensor reading + ML state |
-| GET | `/api/history` | Historical readings (query: `from`, `to`, `interval`) |
-| GET | `/api/alerts` | Recent alert history |
-
-### Gate Control
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/gate/control` | Send gate open/close command |
-
-**Payload:**
-```json
-{ "action": "OPEN" }
-```
-
-### Computer Vision
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/cv/analyze` | Upload image for CV water level detection |
-
----
-
-## Screenshots & Output
-
-### Dashboard — Live Telemetry Overview
-![Dashboard](docs/screenshots/dashboard.png)
-
-### ESP32 Hardware Setup
-![Hardware](docs/screenshots/esp32-hardware.png)
-
----
-
-## Future Enhancements
-
-- **SMS / WhatsApp Alerts** — Integrate Twilio or WhatsApp Business API to push flood warnings to dam officials and downstream residents.
-- **Drone Integration** — Use aerial drone imagery as input to the CV module for large reservoir surveying.
-- **Multi-Dam Network** — Scale the platform to monitor a network of connected dams with a centralized command center.
-- **Digital Twin** — Create a 3D simulation of the dam that updates in real time based on sensor data.
-- **Rainfall Forecast Integration** — Pull weather forecast APIs (IMD / OpenWeatherMap) to factor predicted rainfall into the ML model for earlier warning.
-- **Mobile App** — React Native app for field operators to monitor and control the dam from mobile devices offline and online.
-- **MQTT Protocol** — Replace HTTP polling with MQTT for more efficient bidirectional IoT communication.
-- **Edge ML** — Run a lightweight version of the flood prediction model directly on the ESP32 for offline operation during connectivity loss.
-- **Energy Harvesting** — Solar-powered ESP32 deployment for remote dam sites without grid electricity.
-
----
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature-name`)
-3. Commit your changes (`git commit -m 'Add: description of change'`)
-4. Push to your branch (`git push origin feature/your-feature-name`)
-5. Open a Pull Request
-
-Please ensure changes are tested and documented before submitting.
-
----
-
-## License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+### Dashboard Endpoints
+- `GET /api/dashboard/stats` - Fetches the latest core metrics and alert counts.
+- `GET /api/readings` - Fetches historical telemetry for plotting charts.
+- `GET /api/rainfall` - Prompts the ML model to predict rainfall % using current state.
+- `GET /api/human-detection/status` - Returns YOLOv8 confidence tracking.
 
 ---
 
